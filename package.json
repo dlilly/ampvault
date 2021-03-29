@@ -1,0 +1,24 @@
+{
+  "name": "ampvault",
+  "version": "0.0.1",
+  "description": "credential vault for backend commerce providers",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "dave lilly",
+  "license": "ISC",
+  "dependencies": {
+    "@commercetools/api-request-builder": "^5.6.3",
+    "@commercetools/sdk-client": "^2.1.2",
+    "@commercetools/sdk-middleware-auth": "^6.1.4",
+    "@commercetools/sdk-middleware-http": "^6.0.10",
+    "axios": "^0.21.1",
+    "firebase-admin": "^9.5.0",
+    "lodash": "^4.17.21",
+    "node-fetch": "^2.6.1"
+  },
+  "devDependencies": {
+    "json-stringify-safe": "^5.0.1"
+  }
+}
