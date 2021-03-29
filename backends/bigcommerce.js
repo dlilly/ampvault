@@ -13,7 +13,7 @@ module.exports = cred => {
                 if (k === 'id') {
                     queryString = `/${x}` + queryString
                 }
-                else {
+                else if (x) {
                     queryString += `${k}=${x}&`
                 }
             })
