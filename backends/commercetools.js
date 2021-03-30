@@ -76,22 +76,13 @@ module.exports = cred => {
     _.each(Object.keys(rb), key => {
         let operation = rb[key]
         operation.get = async (opts, query, mapper = mappers[key] || (x => x)) => {
-            console.log(`opts ${JSON.stringify(opts)}`)
-            console.log(`query ${JSON.stringify(query)}`)
-            console.log(`op ${Object.keys(operation)}`)
-
             let uri = operation.parse(opts).build()
             let separator = uri.indexOf("?") > -1 ? "&" : "?"
             uri  = `${uri}${separator}${_.map(query, (v, k) => `${k}=${v}`).join("&")}`
 
-            console.log(`ct ${uri}`)
-
             let { body } = await client.execute({ uri, method: 'GET' })
-
             if (query.sku || query.id || query.slug) {
-                let result = _.first(body.results)
-                console.log(`result ${JSON.stringify(result)}`)
-                return await mapper(result)
+                return await mapper(_.first(body.results))
             }
             else {
                 return {
