@@ -1,11 +1,20 @@
 // 3rd party libs
+const URI = require('urijs');
 const fetch = require('node-fetch');
 const _ = require('lodash')
 
 const { createClient } = require('@commercetools/sdk-client')
 const { createAuthMiddlewareForClientCredentialsFlow } = require('@commercetools/sdk-middleware-auth');
 const { createHttpMiddleware } = require('@commercetools/sdk-middleware-http')
-const { createRequestBuilder } = require('@commercetools/api-request-builder')
+
+        // what can args be? limit, offset, locale, id, sku, slug, keyword
+        // then they just need to be translated into opts!
+        // product projection search
+        // all = ``
+        // search text = text.en="coolbox"
+        // id = filter=id:"b1c7af6e-937d-49d4-9bf2-a215edcf68e4"
+        // sku = filter=variants.sku:"miyagi-do-dojo-t-shirt"
+        // slug = filter=slug.en:"coolbox"
 
 module.exports = cred => {
     const authMiddleware = createAuthMiddlewareForClientCredentialsFlow({
@@ -22,81 +31,125 @@ module.exports = cred => {
     const httpMiddleware = createHttpMiddleware({ host: cred.api_url, fetch })
     const client = createClient({ middlewares: [authMiddleware, httpMiddleware] })
     
-    let getLocalizedText = text => text['en'] || _.first(text)
-
     let mapImage = image => image && ({ url: image.url })
     let mapVariant = variant => ({
-        id          : variant.id,
-        sku         : variant.sku,
+        ...variant,
         prices      : { list: _.get(_.first(variant.prices), 'value.centAmount') / 100 },
         images      : _.map(variant.images, mapImage),
         defaultImage: mapImage(_.first(variant.images))
     })
 
     let mapProduct = product => ({
-        id          : `${product.id}`,
-        name        : `${getLocalizedText(product.name)}`,
-        slug        : `${getLocalizedText(product.slug)}`,
+        ...product,
         variants    : _.map(_.concat(product.variants, [product.masterVariant]), mapVariant),
-        categories  : _.map(product.categories, mapCategory)
-    })
 
-    let mapCategory = category => {
-        let cat = category.obj || category
-        return {
-            id      : category.id,
-            name    : getLocalizedText(cat.name),
-            slug    : getLocalizedText(cat.slug) 
-        }
-    }
+        // the bug is in here somewhere i think.  oh!  cuz we need to map the category with populateCategory?  maybe?
+        categories  : _.map(product.categories, 'obj')
+    })
 
     let populateCategory = async (category) => {
-        let cat = mapCategory(category)
+        console.log(JSON.stringify(category))
 
-        // get the child products
-        let products = (await rb.productProjections.get({ where: [`categories(id="${category.id}")`], expand: ['categories[*]'] })).results
-    
-        // get the child categories
-        let children = (await rb.categories.get({ where: [`parent(id="${category.id}")`] }, {}, mapCategory)).results
-    
+        console.log(JSON.stringify({
+            ...category,
+            products: (await getProduct({ where: [`categories(id="${category.id}")`] })).results,
+            children: (await getCategory({ where: [`parent(id="${category.id}")`] })).results
+    }))
+
+        return ({
+            ...category,
+            products: (await getProduct({ where: [`categories(id="${category.id}")`] })).results,
+            children: (await getCategory({ where: [`parent(id="${category.id}")`] })).results
+    })}
+
+    // these are the (roughly) functions we need. do we need them on each operation? how do we determine how to return a single result or not? i don't want to use the flag :(
+    let getRequest = (config, args) => {
+        let uri = new URI(`/${cred.project}/${config.uri}`)
+
+        let single = false
+        let query = {}
+        if (args.keyword) {
+            query[`text.${args.locale}`] = args.keyword
+        }
+        if (args.slug) {
+            query.filter = [`slug.${args.locale}:"${args.slug}"`]
+            single = true
+        }
+        if (args.sku) {
+            query.filter = [`variants.sku:"${args.sku}")`]
+            single = true
+        }
+        if (args.id) {
+            query.filter = [`id:"${args.id}"`]
+            single = true
+        }
+
+        // add default args from the query type
+        uri.addQuery(config.args)
+
+        // add args from the query (limit, offset, locale)
+        uri.addQuery(args)
+
+        // add any filters based on the args
+        uri.addQuery(query)
+
         return {
-            ...cat,
-            products,
-            children
+            uri: uri.toString(),
+            single
         }
     }
 
-    let mappers = {
-        productProjections: mapProduct,
-        productProjectionsSearch: mapProduct,
-        categories: populateCategory
-    }
-
-    let rb = createRequestBuilder({ projectKey: cred.project })
-    _.each(Object.keys(rb), key => {
-        let operation = rb[key]
-        operation.get = async (opts, query, mapper = mappers[key] || (x => x)) => {
-            let uri = operation.parse(opts).build()
-            let separator = uri.indexOf("?") > -1 ? "&" : "?"
-            uri  = `${uri}${separator}${_.map(query, (v, k) => `${k}=${v}`).join("&")}`
-
-            let { body } = await client.execute({ uri, method: 'GET' })
-            if (query.sku || query.id || query.slug) {
-                return await mapper(_.first(body.results))
-            }
-            else {
-                return {
-                    limit: body.limit,
-                    count: body.count,
-                    offset: body.offset,
+    let translateResults = async (body, mapper, single) => {
+        if (single) {
+            return await mapper(Array.getAsObject(body.results))
+        }
+        else {
+            return {
+                meta: {
                     total: body.total,
-                    results: await Promise.all(body.results.map(await mapper))
-                }
+                    count: body.count,
+                    limit: body.limit,
+                    offset: body.offset
+                },
+                results: await Promise.all(body.results.map(await mapper))
             }
         }
+    }
+
+    let request = config => async args => {
+        let { uri, single } = getRequest(config, args)
+        console.log(`[ ct ] ${uri}`)
+        let { body } = await client.execute({ uri, method: 'GET' })
+        return await translateResults(body, (config.mapper || (x => x)), single)
+    }
+
+    let getProduct = request({
+        uri: `product-projections/search`,
+        args: { expand: ['categories[*]'] },
+        mapper: mapProduct
     })
-    return {
-        ...rb,
+
+    let getCategory = request({
+        uri: `categories`,
+        args: {}
+    })
+
+    let getExpandedCategory = request({
+        uri: `categories`,
+        args: {},
+        mapper: populateCategory
+    })
+
+    let ct = {
+        products: {
+            get: getProduct,
+            getOne: getProduct
+        },
+        categories: {
+            get: async args => await getExpandedCategory({ ...args, where: [`ancestors is empty`] }),
+            getOne: getExpandedCategory
+        },
         type: 'commercetools'
-    }    
+    }
+    return ct
 }

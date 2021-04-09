@@ -25,10 +25,7 @@ module.exports = async (opts = {}) => {
     }
 
     return {
-        addCredential: cred => {
-            localCredentials.push(cred)
-        },
-
+        addCredential: localCredentials.push,
         getCredential,
 
         getClient: key => {
@@ -40,5 +37,14 @@ module.exports = async (opts = {}) => {
                 throw new Error(`No commerce backend matches key [ ${key} ]. Please make sure you have set the 'x-commerce-backend-key' header.`)
             }
         }
+    }
+}
+
+Array.getAsObject = obj => {
+    if (Array.isArray(obj)) {
+        return _.first(obj)
+    }
+    else {
+        return obj
     }
 }
