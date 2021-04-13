@@ -53,7 +53,7 @@ class CommerceBackend {
     }
 
     async getOne(key, args) {
-        return _.first(_.get(await this.get({ key }, args), 'results'))
+        return _.first(_.get(await this.get(key, args), 'results'))
     }
 }
 
