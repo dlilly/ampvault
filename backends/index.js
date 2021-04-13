@@ -1,0 +1,60 @@
+const _ = require('lodash')
+const axios = require('axios')
+
+class CommerceBackend {
+    constructor(cred) {
+        this.configs = {}
+        this.cred = cred
+    }
+
+    getConfig(key) {
+        return this.configs[key]
+    }
+
+    async getHeaders() {
+        return {}
+    }
+
+    getRequest(config, args = {}) {
+        let url = this.getRequestURL(config, args)
+
+        // add default args from the query type
+        url.addQuery(config.args || {})
+
+        return url.toString()
+    }
+
+    getRequestURL(config, args) {
+        return "https://www.google.com"
+    }
+
+    async request({ key, method = 'get' }, args) {
+        let config = this.getConfig(key)
+
+        // get the URL from the backend
+        let url = this.getRequest(config, args)
+        console.log(`[ ${method} ] ${url}`)
+
+        try {
+            // next, execute the request with headers gotten from the backend
+            let response = await axios({ url, method, headers: await this.getHeaders() })
+
+            // use the backend to translate the result set
+            return await this.translateResults(response.data, config.mapper)
+        } catch (error) {
+            console.error(error)
+        }
+
+        return {}
+    }
+
+    async get(key, args) {
+        return await this.request({ key }, args)
+    }
+
+    async getOne(key, args) {
+        return _.first(_.get(await this.get({ key }, args), 'results'))
+    }
+}
+
+module.exports = CommerceBackend
