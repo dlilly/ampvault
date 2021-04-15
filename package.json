@@ -1,6 +1,6 @@
 {
   "name": "ampvault",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "credential vault for backend commerce providers",
   "main": "index.js",
   "scripts": {
