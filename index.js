@@ -10,9 +10,7 @@ let getCredential = key => _.find(getCredentials(), cred => (cred.storeHash || c
 module.exports = config => ({
     getClient: async key => {
         if (config.credential && _.isEmpty(remoteCredentials)) {
-            admin.initializeApp({
-                credential: admin.credential.cert(config.credential)
-            });
+            admin.initializeApp({ credential: admin.credential.cert(config.credential) });
         
             let db = admin.firestore();
             let query = db.collection(config.collection)

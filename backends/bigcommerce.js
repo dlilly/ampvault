@@ -22,7 +22,8 @@ let mapProduct = prod => ({
     ...prod,
     shortDescription: prod.description,
     longDescription: prod.description,
-    variants: _.map(prod.variants, mapVariant(prod))
+    variants: _.map(prod.variants, mapVariant(prod)),
+    raw: prod
 })
 
 class BigCommerceBackend extends CommerceBackend {
@@ -41,6 +42,7 @@ class BigCommerceBackend extends CommerceBackend {
                     ...cat,
                     products: (await this.get('products', { "categories:in": cat.id })).results,
                     children: (await this.get('categories', { parent_id: cat.id })).results,
+                    raw: cat
                 })
             }
         }
