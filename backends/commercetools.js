@@ -6,6 +6,18 @@ const CommerceBackend = require('./index')
 
 const mapImage = image => image && ({ url: image.url })
 
+const mapProduct = product => ({
+    ...product,
+    variants    : _.map(_.concat(product.variants, [product.masterVariant]), variant => ({
+        ...variant,
+        prices      : { list: _.get(_.first(variant.prices), 'value.centAmount') / 100 },
+        images      : _.map(variant.images, mapImage),
+        defaultImage: mapImage(_.first(variant.images))
+    })),
+    categories  : _.map(product.categories, 'obj'),
+    raw: product
+})
+
 class CommerceToolsBackend extends CommerceBackend {
     constructor(cred) {
         super(cred)
@@ -13,24 +25,20 @@ class CommerceToolsBackend extends CommerceBackend {
             products: {
                 uri: `product-projections/search`,
                 args: { expand: ['categories[*]'] },
-                mapper: product => ({
-                    ...product,
-                    variants    : _.map(_.concat(product.variants, [product.masterVariant]), variant => ({
-                        ...variant,
-                        prices      : { list: _.get(_.first(variant.prices), 'value.centAmount') / 100 },
-                        images      : _.map(variant.images, mapImage),
-                        defaultImage: mapImage(_.first(variant.images))
-                    })),
-                    categories  : _.map(product.categories, 'obj'),
-                    raw: product
-                })
+                mapper: mapProduct
+            },
+            productsQuery: {
+                uri: `product-projections`,
+                args: { expand: ['categories[*]'] },
+                mapper: mapProduct
             },
             categories: {
                 uri: `categories`,
+                args: { where: [`parent is not defined`] },
                 mapper: async (category) => ({
                     ...category,
-                    products: (await this.get('products', { where: [`categories(id="${category.id}")`] })).results,
-                    children: _.isEmpty(category.ancestors) ? (await this.get('categories', { where: [`parent(id="${category.id}")`] })).results : [],
+                    products: (await this.get('productsQuery', { where: [`categories(id="${category.id}")`] })).results,
+                    children: (await this.get('categories', { where: [`parent(id="${category.id}")`] })).results,
                     raw: category
                 })
             }
@@ -61,7 +69,8 @@ class CommerceToolsBackend extends CommerceBackend {
 
         let query = {
             limit: args.limit,
-            offset: args.offset
+            offset: args.offset,
+            where: args.where
         }
 
         if (args.keyword) {

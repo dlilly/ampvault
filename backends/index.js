@@ -19,7 +19,12 @@ class CommerceBackend {
         let url = this.getRequestURL(config, args)
 
         // add default args from the query type
-        url.addQuery(config.args || {})
+        // url.addQuery(config.args || {})
+        _.each(config.args, (v, k) => {
+            if (!url.hasQuery(k)) {
+                url.addQuery({ [k]: v })
+            }
+        })
 
         return url.toString()
     }
