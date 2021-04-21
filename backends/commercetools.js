@@ -74,10 +74,10 @@ class CommerceToolsBackend extends CommerceBackend {
         }
 
         if (args.keyword) {
-            query[`text.${args.locale}`] = args.keyword
+            query[`text.${args.language}`] = args.keyword
         }
         if (args.slug) {
-            query.filter = [`slug.${args.locale}:"${args.slug}"`]
+            query.filter = [`slug.${args.language}:"${args.slug}"`]
         }
         if (args.sku) {
             query.filter = [`variants.sku:"${args.sku}")`]
