@@ -15,6 +15,7 @@
     "@commercetools/sdk-middleware-http": "^6.0.10",
     "axios": "^0.21.1",
     "firebase-admin": "^9.5.0",
+    "locale-currency": "0.0.2",
     "lodash": "^4.17.21",
     "node-fetch": "^2.6.1",
     "urijs": "^1.19.6"

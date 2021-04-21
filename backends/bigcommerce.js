@@ -1,28 +1,30 @@
 // 3rd party libs
 const URI = require('urijs');
 const _ = require('lodash')
+
+const { formatMoneyString } = require('../util/locale-formatter')
 const CommerceBackend = require('./index')
 
 let mapImage = image => ({ url: image.url_standard })
 
-let mapVariant = prod => variant => {
+let mapVariant = (prod, args) => variant => {
     let images = variant.image_url ? [{ url: variant.image_url }] : _.map(prod.images, mapImage)
     return {
         ...variant,
         prices: {
-            list: variant.price || prod.price,
-            sale: variant.sale_price || prod.price
+            list: formatMoneyString(variant.price || prod.price, args.locale),
+            sale: formatMoneyString(variant.sale_price || prod.price, args.locale)
         },
         defaultImage: _.first(images),
         images
     }
 }
 
-let mapProduct = prod => ({
+let mapProduct = args => prod => ({
     ...prod,
     shortDescription: prod.description,
     longDescription: prod.description,
-    variants: _.map(prod.variants, mapVariant(prod)),
+    variants: _.map(prod.variants, mapVariant(prod, args)),
     raw: prod
 })
 
@@ -53,6 +55,9 @@ class BigCommerceBackend extends CommerceBackend {
     getRequestURL(config, args) {
         let uri = new URI(`${this.catalogApiUrl}/${config.uri}`)
 
+        // delete the locale if we got one because it fouls the url. for bigcommerce, just use default 'en-US'
+        delete args.locale
+
         if (args && args.limit && args.offset) {
             args.page = Math.floor((args.offset / args.limit) + 1)
             delete args.offset
@@ -66,7 +71,7 @@ class BigCommerceBackend extends CommerceBackend {
         return { 'X-Auth-Token': this.cred.apiToken }
     }
 
-    async translateResults(data, mapper = (x => x)) {
+    async translateResults(data, mapper = (args => x => x)) {
         if (!Array.isArray(data.data)) {
             data = {
                 data: [data.data],

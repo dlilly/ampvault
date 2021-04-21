@@ -45,7 +45,7 @@ class CommerceBackend {
             let response = await axios({ url, method, headers: await this.getHeaders() })
 
             // use the backend to translate the result set
-            return await this.translateResults(response.data, config.mapper)
+            return await this.translateResults(response.data, config.mapper(args))
         } catch (error) {
             console.error(error)
         }

@@ -2,22 +2,23 @@
 const URI = require('urijs');
 const _ = require('lodash')
 const axios = require('axios')
+
+const { formatMoneyString } = require('../util/locale-formatter')
 const CommerceBackend = require('./index')
 
 const mapImage = image => image && ({ url: image.url })
 
-const mapProduct = product => ({
+const mapProduct = args => product => ({
     ...product,
     variants    : _.map(_.concat(product.variants, [product.masterVariant]), variant => ({
         ...variant,
-        prices      : { list: _.get(_.first(variant.prices), 'value.centAmount') / 100 },
+        prices      : { list: formatMoneyString(_.get(variant.scopedPrice || _.first(variant.prices), 'value.centAmount') / 100, args.locale) },
         images      : _.map(variant.images, mapImage),
         defaultImage: mapImage(_.first(variant.images))
     })),
     categories  : _.map(product.categories, 'obj'),
     raw: product
 })
-
 class CommerceToolsBackend extends CommerceBackend {
     constructor(cred) {
         super(cred)
@@ -35,7 +36,7 @@ class CommerceToolsBackend extends CommerceBackend {
             categories: {
                 uri: `categories`,
                 args: { where: [`parent is not defined`] },
-                mapper: async (category) => ({
+                mapper: args => async (category) => ({
                     ...category,
                     products: (await this.get('productsQuery', { where: [`categories(id="${category.id}")`] })).results,
                     children: (await this.get('categories', { where: [`parent(id="${category.id}")`] })).results,
@@ -73,11 +74,17 @@ class CommerceToolsBackend extends CommerceBackend {
             where: args.where
         }
 
+        let [ language, country ] = args.locale.split('-')
+
+        if (config.uri.indexOf('projections') > -1) {
+            query.priceCurrency = args.currency
+        }
+
         if (args.keyword) {
-            query[`text.${args.language}`] = args.keyword
+            query[`text.${language}`] = args.keyword
         }
         if (args.slug) {
-            query.filter = [`slug.${args.language}:"${args.slug}"`]
+            query.filter = [`slug.${language}:"${args.slug}"`]
         }
         if (args.sku) {
             query.filter = [`variants.sku:"${args.sku}")`]
@@ -96,7 +103,7 @@ class CommerceToolsBackend extends CommerceBackend {
         return { authorization: await this.authenticate() }
     }
 
-    async translateResults(data, mapper = (x => x)) {
+    async translateResults(data, mapper = (args => x => x)) {
         if (!data.results) {
             data = {
                 limit: 1,
