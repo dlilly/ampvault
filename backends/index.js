@@ -36,6 +36,12 @@ class CommerceBackend {
     async request({ key, method = 'get' }, args) {
         let config = this.getConfig(key)
 
+        args.locale = args.locale || 'en-US'
+        let [language, country] = args.locale.split('-')
+
+        args.language = language
+        args.country = country
+
         // get the URL from the backend
         let url = this.getRequest(config, args)
         console.log(`[ ${method} ] ${url}`)
@@ -45,7 +51,11 @@ class CommerceBackend {
             let response = await axios({ url, method, headers: await this.getHeaders() })
 
             // use the backend to translate the result set
-            return await this.translateResults(response.data, config.mapper(args))
+            let x = await this.translateResults(response.data, config.mapper(args))
+
+            // console.log(`x ${JSON.stringify(x)}`)
+
+            return x
         } catch (error) {
             console.error(error)
         }

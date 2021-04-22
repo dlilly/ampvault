@@ -8,27 +8,41 @@ const CommerceBackend = require('./index')
 
 const mapImage = image => image && ({ url: image.url })
 
-const mapProduct = args => product => ({
-    ...product,
-    name            : product.name[args.locale],
-    slug            : product.slug[args.locale],
-    longDescription : product.metaDescription && product.metaDescription[args.locale],
-    variants        : _.map(_.concat(product.variants, [product.masterVariant]), variant => ({
-        ...variant,
-        prices      : { list: formatMoneyString(_.get(variant.scopedPrice || _.first(variant.prices), 'value.centAmount') / 100, args.locale, args.currency) },
-        images      : _.map(variant.images, mapImage),
-        defaultImage: mapImage(_.first(variant.images)),
-        attributes  : _.map(variant.attributes, ({ name, value }) => { name, value }),
-        size        : _.get(_.find(variant.attributes, att => att.name === 'size'), 'value'),
-        color       : _.get(_.find(variant.attributes, att => att.name === 'color'), `value.label.${args.locale}`)
-    })),
-    categories      : _.map(product.categories, cat => ({
-        ...cat.obj,
-        name: cat.obj.name[args.locale],
-        slug: cat.obj.slug[args.locale]
-    })),
-    raw             : product
-})
+const localize = (text, args) => {
+    if (text.label) {
+        text = text.label
+    }
+
+    if (typeof text === 'string') {
+        return text
+    }
+
+    return text[args.locale] || text[args.language] || text[Object.keys(text)[0]]
+}
+
+const mapProduct = args => product => {
+    return {
+        ...product,
+        name            : localize(product.name, args),
+        slug            : localize(product.slug, args),
+        longDescription : product.metaDescription && localize(product.metaDescription, args),
+        variants        : _.map(_.concat(product.variants, [product.masterVariant]), variant => ({
+            ...variant,
+            prices      : { list: formatMoneyString(_.get(variant.scopedPrice || _.first(variant.prices), 'value.centAmount') / 100, args.locale, args.currency) },
+            images      : _.map(variant.images, mapImage),
+            defaultImage: mapImage(_.first(variant.images)),
+            attributes  : _.map(variant.attributes, att => ({ name: att.name, value: localize(att.value, args) })),
+            size        : _.get(_.find(variant.attributes, att => att.name === 'size'), 'value'),
+            color       : _.get(_.find(variant.attributes, att => att.name === 'color'), `value.label.${args.locale}`)
+        })),
+        categories      : _.map(product.categories, cat => ({
+            ...cat.obj,
+            name: localize(cat.obj.name, args),
+            slug: localize(cat.obj.slug, args)
+        })),
+        raw             : product
+    }
+}
 class CommerceToolsBackend extends CommerceBackend {
     constructor(cred) {
         super(cred)
@@ -48,8 +62,8 @@ class CommerceToolsBackend extends CommerceBackend {
                 args: { where: [`parent is not defined`] },
                 mapper: args => async (category) => ({
                     ...category,
-                    name        : category.name[args.locale],
-                    slug        : category.slug[args.locale],
+                    name        : localize(category.name, args),
+                    slug        : localize(category.slug, args),
                     products    : (await this.get('productsQuery', { where: [`categories(id="${category.id}")`] })).results,
                     children    : (await this.get('categories', { where: [`parent(id="${category.id}")`] })).results,
                     raw         : category
