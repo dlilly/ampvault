@@ -22,7 +22,11 @@ const mapProduct = args => product => ({
         size        : _.get(_.find(variant.attributes, att => att.name === 'size'), 'value'),
         color       : _.get(_.find(variant.attributes, att => att.name === 'color'), `value.label.${args.locale}`)
     })),
-    categories      : _.map(product.categories, 'obj'),
+    categories      : _.map(product.categories, cat => ({
+        ...cat.obj,
+        name: cat.obj.name[args.locale],
+        slug: cat.obj.slug[args.locale]
+    })),
     raw             : product
 })
 class CommerceToolsBackend extends CommerceBackend {
@@ -44,9 +48,11 @@ class CommerceToolsBackend extends CommerceBackend {
                 args: { where: [`parent is not defined`] },
                 mapper: args => async (category) => ({
                     ...category,
-                    products: (await this.get('productsQuery', { where: [`categories(id="${category.id}")`] })).results,
-                    children: (await this.get('categories', { where: [`parent(id="${category.id}")`] })).results,
-                    raw: category
+                    name        : category.name[args.locale],
+                    slug        : category.slug[args.locale],
+                    products    : (await this.get('productsQuery', { where: [`categories(id="${category.id}")`] })).results,
+                    children    : (await this.get('categories', { where: [`parent(id="${category.id}")`] })).results,
+                    raw         : category
                 })
             }
         }
