@@ -12,7 +12,7 @@ const mapProduct = args => product => ({
     ...product,
     variants    : _.map(_.concat(product.variants, [product.masterVariant]), variant => ({
         ...variant,
-        prices      : { list: formatMoneyString(_.get(variant.scopedPrice || _.first(variant.prices), 'value.centAmount') / 100, args.locale) },
+        prices      : { list: formatMoneyString(_.get(variant.scopedPrice || _.first(variant.prices), 'value.centAmount') / 100, args.locale, args.currency) },
         images      : _.map(variant.images, mapImage),
         defaultImage: mapImage(_.first(variant.images))
     })),

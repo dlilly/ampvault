@@ -12,8 +12,8 @@ let mapVariant = (prod, args) => variant => {
     return {
         ...variant,
         prices: {
-            list: formatMoneyString(variant.price || prod.price, args.locale),
-            sale: formatMoneyString(variant.sale_price || prod.price, args.locale)
+            list: formatMoneyString(variant.price || prod.price, args.locale, args.currency),
+            sale: formatMoneyString(variant.sale_price || prod.price, args.locale, args.currency)
         },
         defaultImage: _.first(images),
         images

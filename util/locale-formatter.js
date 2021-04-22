@@ -1,8 +1,6 @@
-const LocaleCurrency = require('locale-currency')
-
-const formatMoneyString = (money, locale = 'en-US') => new Intl.NumberFormat(locale, {
+const formatMoneyString = (money, locale = 'en-US', currency = 'USD') => new Intl.NumberFormat(locale, {
     style: 'currency',
-    currency: LocaleCurrency.getCurrency(locale),
+    currency
 }).format(money);
 
 module.exports = { formatMoneyString }
