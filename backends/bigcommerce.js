@@ -16,7 +16,7 @@ let mapVariant = (prod, args) => variant => {
             sale: formatMoneyString(variant.sale_price || prod.price, args.locale, args.currency)
         },
         defaultImage: _.first(images),
-        // attributes: variant.option_values
+        attributes: variant.option_values.map(opt => ({ name: opt.option_display_name.toLowerCase(), value: opt.label })),
         images
     }
 }
