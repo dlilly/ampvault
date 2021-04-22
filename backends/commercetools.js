@@ -10,14 +10,20 @@ const mapImage = image => image && ({ url: image.url })
 
 const mapProduct = args => product => ({
     ...product,
-    variants    : _.map(_.concat(product.variants, [product.masterVariant]), variant => ({
+    name            : product.name[args.locale],
+    slug            : product.slug[args.locale],
+    longDescription : product.metaDescription[args.locale],
+    variants        : _.map(_.concat(product.variants, [product.masterVariant]), variant => ({
         ...variant,
         prices      : { list: formatMoneyString(_.get(variant.scopedPrice || _.first(variant.prices), 'value.centAmount') / 100, args.locale, args.currency) },
         images      : _.map(variant.images, mapImage),
-        defaultImage: mapImage(_.first(variant.images))
+        defaultImage: mapImage(_.first(variant.images)),
+        attributes  : _.map(variant.attributes, ({ name, value }) => { name, value }),
+        size        : _.get(_.find(variant.attributes, att => att.name === 'size'), 'value'),
+        color       : _.get(_.find(variant.attributes, att => att.name === 'color'), `value.label.${args.locale}`)
     })),
-    categories  : _.map(product.categories, 'obj'),
-    raw: product
+    categories      : _.map(product.categories, 'obj'),
+    raw             : product
 })
 class CommerceToolsBackend extends CommerceBackend {
     constructor(cred) {
